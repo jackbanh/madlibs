@@ -22,12 +22,36 @@ class PhraseBucketer
                     'Ave.', "St.", "Rd.",
                     'Jan.', "Feb.", "Mar.", "Apr.", "Jun.", "Jul.", "Aug.", "Sept.", "Sep.", "Oct.", "Nov.", "Dec."]
 
-  def initialize(name)
+  # options to use when processing a phrase
+  DEFAULT_OPTIONS = {
+    :min_nouns => 1,
+    :max_nouns => 2,
+    :min_words => 6,
+    :max_words => 13,
+    :must_start_with_uppercase => true,
+  }
+
+  def initialize(name, options = {})
     @removed_nouns = []
     @name = name
     @tgr = EngTagger.new   
     @phrase_buckets = {1 => [], 2 => []}
     @tagged_phrase_buckets = {1=> [], 2 => []}
+
+    @options = DEFAULT_OPTIONS.merge(options)
+  end
+
+  # Determines if a phrase meets the requirements for being written to output
+  def get_bucket_number(phrase)
+    word_count = phrase.split(" ").count
+    noun_count = (phrase.split(NOUN_WILDCARD).count) - 1
+
+    return nil if noun_count < @options[:min_nouns] or noun_count > @options[:max_nouns]
+    return nil if word_count < @options[:min_words] or word_count > @options[:max_words]
+
+    return nil if @options[:must_start_with_uppercase] and phrase[0] =~ /[^A-Z]/
+
+    return noun_count
   end
 
   # Substitute periods in text for a different character so it doesn't get mistakenly split up
@@ -85,18 +109,12 @@ class PhraseBucketer
         @removed_nouns.push noun
       end if nouns
 
-      phrase_words = phrase.split(" ")
-      number_of_nouns = (phrase.split(NOUN_WILDCARD).count) - 1
+      bucket_number = get_bucket_number(phrase)
 
       # if phrase meets eligibility requirements
-      if number_of_nouns < 3 && 
-         phrase_words.count > 5 && 
-         number_of_nouns > 0 &&
-         phrase_words.count < 14 && 
-         phrase[0] =~ /[A-Z]/
-
+      if bucket_number
          # Add phrase to appropriate bucket
-         @phrase_buckets[number_of_nouns].push(phrase + (punctuations[i].gsub(";","."))) rescue nil
+         @phrase_buckets[bucket_number].push(phrase + (punctuations[i].gsub(";","."))) rescue nil
          phrase
       else
         nil
