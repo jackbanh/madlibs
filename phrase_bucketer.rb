@@ -30,7 +30,8 @@ class PhraseBucketer
     @tagged_phrase_buckets = {1=> [], 2 => []}
   end
 
-
+  # Substitute periods in text for a different character so it doesn't get mistakenly split up
+  # as a phrase
   def substitute_periods(text)
     begin
       modified = text.gsub(/b\.\s?(\d{4})/, "b#{FAKE_PERIOD} \\1") || text  # born
@@ -50,43 +51,58 @@ class PhraseBucketer
     end
   end
 
+  # Processes a string and updates phrase_buckets and removed_nouns
   def add_text(text)
     return [] if text.nil?
     text = substitute_periods(text)
     return [] if text.nil?
     punctuations = text.scan(/[\.\!\?;]/)
+
+    # break text into phrases and process
     phrases = text.gsub(/["”\(\)]/," ").gsub("\n"," ").split(/[\.\!\?;]/).collect.with_index do |s,i|
       s = s.strip.gsub(FAKE_PERIOD,".")
       phrase =  s.strip
+
+      # do parts-of-speech tagging
       tagged_readable_phrase = @tgr.get_readable(phrase)
       tagged_phrase = @tgr.add_tags(phrase)
       nouns = @tgr.get_nouns(tagged_phrase)
       proper = @tgr.get_proper_nouns(tagged_phrase)
 
+      # Discard any phrase with a proper noun
       if proper && proper.count > 0
         next
       end
       
-      nouns.each do |noun,val|
+      nouns.each do |noun, val|
+        # generate placeholder
         s = NOUN_WILDCARD
-        s += "s" if tagged_readable_phrase.include?(" #{noun}/NNS ")        
+        s += "s" if tagged_readable_phrase.include?(" #{noun}/NNS ")
+
+        # replace noun with placeholder
         phrase.gsub!(" #{noun} ", " #{s} ")
+
         @removed_nouns.push noun
       end if nouns
+
       phrase_words = phrase.split(" ")
-      number_of_nouns = (phrase.split(NOUN_WILDCARD).count) -1
-#      puts phrase, number_of_nouns
+      number_of_nouns = (phrase.split(NOUN_WILDCARD).count) - 1
+
+      # if phrase meets eligibility requirements
       if number_of_nouns < 3 && 
          phrase_words.count > 5 && 
          number_of_nouns > 0 &&
          phrase_words.count < 14 && 
          phrase[0] =~ /[A-Z]/
+
+         # Add phrase to appropriate bucket
          @phrase_buckets[number_of_nouns].push(phrase + (punctuations[i].gsub(";","."))) rescue nil
          phrase
       else
         nil
       end
     end.compact.uniq
+
     @removed_nouns = @removed_nouns.compact.uniq.sort
   end
 end
