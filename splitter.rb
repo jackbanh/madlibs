@@ -1,4 +1,4 @@
-require_relative 'phrase_bucketer.rb'
+require_relative 'lib/phrase_bucketer.rb'
 
 MAX_TEXTS = 100
 

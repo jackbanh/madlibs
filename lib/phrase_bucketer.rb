@@ -1,5 +1,7 @@
 require 'engtagger'
 
+require_relative 'phrase.rb'
+
 class PhraseBucketer
 
   attr_reader :phrase_buckets, :name, :tagged_phrase_buckets, :removed_nouns
@@ -28,6 +30,7 @@ class PhraseBucketer
     :max_nouns => 2,
     :min_words => 6,
     :max_words => 13,
+
     :must_start_with_uppercase => true,
   }
 
@@ -60,14 +63,17 @@ class PhraseBucketer
     begin
       modified = text.gsub(/b\.\s?(\d{4})/, "b#{FAKE_PERIOD} \\1") || text  # born
       modified.gsub!(/d\.\s?(\d{4})/, "d#{FAKE_PERIOD} \\1")   # died
+
       initials = modified.scan(/(?:^|\s|\()((?:[A-Zc]\.)+)/) # initials, circas
       initials.each do |i|
-        modified.gsub!(i[0],i[0].gsub(".",FAKE_PERIOD,))
+        modified.gsub!(i[0], i[0].gsub(".",FAKE_PERIOD,))
       end
+
       ABBREVIATIONS.each do |title|
-       mod_title = title.gsub('.','\.')
-       modified.gsub!(/\b#{mod_title}/, mod_title.gsub('\.',FAKE_PERIOD))
+        mod_title = title.gsub('.', '\.')
+        modified.gsub!(/\b#{mod_title}/, mod_title.gsub('\.', FAKE_PERIOD))
       end
+
       return modified
     rescue => e
       puts "Problem : #{e}"
@@ -83,43 +89,41 @@ class PhraseBucketer
     punctuations = text.scan(/[\.\!\?;]/)
 
     # break text into phrases and process
-    phrases = text.gsub(/["”\(\)]/," ").gsub("\n"," ").split(/[\.\!\?;]/).collect.with_index do |s,i|
-      s = s.strip.gsub(FAKE_PERIOD,".")
-      phrase =  s.strip
+    text.gsub(/["”\(\)]/," ").gsub("\n"," ").split(/[\.\!\?;]/).collect.with_index do |s, i|
+      s = s.strip.gsub(FAKE_PERIOD, ".")
+      phrase = Phrase.new(s.strip, @tgr)
+      placeholder_phrase = phrase.text
 
       # do parts-of-speech tagging
-      tagged_readable_phrase = @tgr.get_readable(phrase)
-      tagged_phrase = @tgr.add_tags(phrase)
+      tagged_readable_phrase = phrase.readable
+      tagged_phrase = phrase.tagged
       nouns = @tgr.get_nouns(tagged_phrase)
-      proper = @tgr.get_proper_nouns(tagged_phrase)
-
-      # Discard any phrase with a proper noun
-      if proper && proper.count > 0
-        next
-      end
       
-      nouns.each do |noun, val|
+      # for each noun, remove it from the phrase and generate a placeholder
+      nouns.each do |noun, _|
+        is_plural = tagged_readable_phrase.include?(" #{noun}/NNS ")
+
         # generate placeholder
         s = NOUN_WILDCARD
-        s += "s" if tagged_readable_phrase.include?(" #{noun}/NNS ")
+        s += "s" if is_plural
 
         # replace noun with placeholder
-        phrase.gsub!(" #{noun} ", " #{s} ")
+        placeholder_phrase.gsub!(" #{noun} ", " #{s} ")
 
         @removed_nouns.push noun
       end if nouns
 
-      bucket_number = get_bucket_number(phrase)
+      bucket_number = get_bucket_number(placeholder_phrase)
 
       # if phrase meets eligibility requirements
       if bucket_number
          # Add phrase to appropriate bucket
-         @phrase_buckets[bucket_number].push(phrase + (punctuations[i].gsub(";","."))) rescue nil
-         phrase
+         @phrase_buckets[bucket_number].push(placeholder_phrase + (punctuations[i].gsub(";","."))) rescue nil
+         placeholder_phrase
       else
         nil
       end
-    end.compact.uniq
+    end
 
     @removed_nouns = @removed_nouns.compact.uniq.sort
   end
