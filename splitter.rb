@@ -24,7 +24,7 @@ dirs.each do |d|
   corpuses.push(bucketer)
 end
 
-Dir.mkdir "output" unless Dir.exists?("output")
+Dir.mkdir "output" unless Dir.exist?("output")
 
 corpuses.each do |bucket|
   # Write _1.txt and _2.txt files

@@ -44,7 +44,7 @@ class PhraseBucketer
   # Determines if a phrase meets the requirements for being written to output
   def get_bucket_number(phrase)
     word_count = phrase.split(" ").count
-    noun_count = (phrase.split(NOUN_WILDCARD).count) - 1
+    noun_count = phrase.scan(NOUN_WILDCARD).count
 
     return nil if noun_count < @options[:min_nouns] or noun_count > @options[:max_nouns]
     return nil if word_count < @options[:min_words] or word_count > @options[:max_words]
