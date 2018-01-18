@@ -98,13 +98,15 @@ class PhraseBucketer
         next
       end
       
+      # Extract all the nouns into the removed_nouns list
+      # Replace all nouns with placeholders
       nouns.each do |noun, val|
         # generate placeholder
-        s = NOUN_WILDCARD
-        s += "s" if tagged_readable_phrase.include?(" #{noun}/NNS ")
+        placeholder = NOUN_WILDCARD
+        placeholder += "s" if tagged_readable_phrase.include?(" #{noun}/NNS ")
 
         # replace noun with placeholder
-        phrase.gsub!(" #{noun} ", " #{s} ")
+        phrase.gsub!(Regexp.new('\b' + Regexp.escape(noun) + '\b'), placeholder)
 
         @removed_nouns.push noun
       end if nouns
