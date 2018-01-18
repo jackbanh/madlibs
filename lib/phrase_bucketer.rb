@@ -98,21 +98,30 @@ class PhraseBucketer
       tagged_readable_phrase = phrase.readable
       tagged_phrase = phrase.tagged
       nouns = @tgr.get_nouns(tagged_phrase)
+      proper = @tgr.get_proper_nouns(tagged_phrase)
+
+      # Pre-process and discard any invalid phrases
+      # Discard any phrase with a proper noun
+      if proper && proper.count > 0
+        next
+      end
       
-      # for each noun, remove it from the phrase and generate a placeholder
+      # Extract all the nouns into the removed_nouns list
+      # Replace all nouns with placeholders
       nouns.each do |noun, _|
         is_plural = tagged_readable_phrase.include?(" #{noun}/NNS ")
 
         # generate placeholder
-        s = NOUN_WILDCARD
-        s += "s" if is_plural
+        placeholder = NOUN_WILDCARD
+        placeholder += "s" if is_plural
 
         # replace noun with placeholder
-        placeholder_phrase.gsub!(" #{noun} ", " #{s} ")
+        placeholder_phrase.gsub!(Regexp.new('\b' + Regexp.escape(noun) + '\b'), placeholder)
 
         @removed_nouns.push noun
       end if nouns
 
+      # Post-process and remove any phrase that doesn't meet length requirements
       bucket_number = get_bucket_number(placeholder_phrase)
 
       # if phrase meets eligibility requirements
