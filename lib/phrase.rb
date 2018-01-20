@@ -48,10 +48,10 @@ class Phrase
 
     # pick a rnadom sample of nouns and replace them
     @nouns.keys.sample(sample_size).each do |noun|
-      placeholder_text.gsub!(Regexp.new('\b' + Regexp.escape(noun.to_s) + '\b'), noun.tag)
+      placeholder_text.gsub!(Regexp.new('\b' + Regexp.escape(noun.to_s) + '\b'), "--#{noun.tag}--")
     end
 
-    return placeholder_text
+    return placeholder_text, sample_size
   end
 
   def to_s

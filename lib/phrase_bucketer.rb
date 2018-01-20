@@ -7,8 +7,6 @@ class PhraseBucketer
 
   attr_reader :phrase_buckets, :name, :tagged_phrase_buckets, :removed_nouns
 
-  NOUN_WILDCARD = "--NOUN--"
-
   # A character used to stand in for a period during parsing.  Only used internally.
   FAKE_PERIOD = "\u2024"
 
@@ -30,7 +28,7 @@ class PhraseBucketer
     :min_nouns => 1,
     :max_nouns => 2,
     :min_words => 6,
-    :max_words => 13,
+    :max_words => 20,
 
     :must_start_with_uppercase => true,
   }
@@ -43,11 +41,6 @@ class PhraseBucketer
     @tagged_phrase_buckets = {1=> [], 2 => []}
 
     @options = DEFAULT_OPTIONS.merge(options)
-  end
-
-  # Determines if a phrase meets the requirements for being written to output
-  def get_bucket_number(text)
-    return text.scan(NOUN_WILDCARD).count
   end
 
   # Substitute periods in text for a different character so it doesn't get mistakenly split up
@@ -116,10 +109,7 @@ class PhraseBucketer
       @removed_nouns.merge(phrase.nouns.map { |n, _| n.stem })
 
       # Get the phrase with the nouns replaced
-      placeholder_phrase = phrase.generate_placeholder_text
-
-      # Post-process and remove any phrase that doesn't meet length requirements
-      bucket_number = get_bucket_number(placeholder_phrase)
+      placeholder_phrase, bucket_number = phrase.generate_placeholder_text
 
       # if phrase meets eligibility requirements
       if bucket_number
