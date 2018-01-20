@@ -1,6 +1,8 @@
-require_relative 'lib/phrase_bucketer.rb'
+#!/usr/bin/ruby
 
-MAX_TEXTS = 3
+require_relative '../lib/phrase_bucketer.rb'
+
+MAX_TEXTS = 5
 
 corpuses = []
 
