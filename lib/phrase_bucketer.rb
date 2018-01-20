@@ -1,3 +1,4 @@
+require 'set'
 require 'engtagger'
 
 require_relative 'phrase.rb'
@@ -35,7 +36,7 @@ class PhraseBucketer
   }
 
   def initialize(name, options = {})
-    @removed_nouns = []
+    @removed_nouns = SortedSet.new
     @name = name
     @tgr = EngTagger.new   
     @phrase_buckets = {1 => [], 2 => []}
@@ -45,16 +46,8 @@ class PhraseBucketer
   end
 
   # Determines if a phrase meets the requirements for being written to output
-  def get_bucket_number(phrase)
-    word_count = phrase.split(" ").count
-    noun_count = phrase.scan(NOUN_WILDCARD).count
-
-    return nil if noun_count < @options[:min_nouns] or noun_count > @options[:max_nouns]
-    return nil if word_count < @options[:min_words] or word_count > @options[:max_words]
-
-    return nil if @options[:must_start_with_uppercase] and phrase[0] =~ /[^A-Z]/
-
-    return noun_count
+  def get_bucket_number(text)
+    return text.scan(NOUN_WILDCARD).count
   end
 
   # Substitute periods in text for a different character so it doesn't get mistakenly split up
@@ -81,6 +74,17 @@ class PhraseBucketer
     end
   end
 
+  def is_valid_phrase(phrase)
+    word_count = phrase.get_word_count
+    noun_count = phrase.nouns.count
+
+    return nil if noun_count < @options[:min_nouns] or noun_count > @options[:max_nouns]
+    return nil if word_count < @options[:min_words] or word_count > @options[:max_words]
+    return nil if @options[:must_start_with_uppercase] and phrase.to_s =~ /^[^A-Z]/
+
+    return true
+  end
+
   # Processes a string and updates phrase_buckets and removed_nouns
   def add_text(text)
     return [] if text.nil?
@@ -90,8 +94,13 @@ class PhraseBucketer
 
     # break text into phrases and process
     text.gsub(/["”\(\)]/," ").gsub("\n"," ").split(/[\.\!\?;]/).collect.with_index do |s, i|
-      s = s.strip.gsub(FAKE_PERIOD, ".")
-      phrase = Phrase.new(s.strip, @tgr)
+      s = s.gsub(FAKE_PERIOD, ".").strip
+
+      if s.nil? or s.empty?
+        next
+      end
+
+      phrase = Phrase.new(s, @tgr)
       placeholder_phrase = phrase.text
 
       # do parts-of-speech tagging
@@ -101,25 +110,13 @@ class PhraseBucketer
       proper = @tgr.get_proper_nouns(tagged_phrase)
 
       # Pre-process and discard any invalid phrases
-      # Discard any phrase with a proper noun
-      if proper && proper.count > 0
-        next
-      end
+      next unless is_valid_phrase(phrase)
       
       # Extract all the nouns into the removed_nouns list
-      # Replace all nouns with placeholders
-      nouns.each do |noun, _|
-        is_plural = tagged_readable_phrase.include?(" #{noun}/NNS ")
+      @removed_nouns.merge(phrase.nouns.map { |n, _| n.stem })
 
-        # generate placeholder
-        placeholder = NOUN_WILDCARD
-        placeholder += "s" if is_plural
-
-        # replace noun with placeholder
-        placeholder_phrase.gsub!(Regexp.new('\b' + Regexp.escape(noun) + '\b'), placeholder)
-
-        @removed_nouns.push noun
-      end if nouns
+      # Get the phrase with the nouns replaced
+      placeholder_phrase = phrase.generate_placeholder_text
 
       # Post-process and remove any phrase that doesn't meet length requirements
       bucket_number = get_bucket_number(placeholder_phrase)
@@ -133,7 +130,5 @@ class PhraseBucketer
         nil
       end
     end
-
-    @removed_nouns = @removed_nouns.compact.uniq.sort
   end
 end
