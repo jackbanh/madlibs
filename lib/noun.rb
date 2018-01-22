@@ -7,7 +7,7 @@ class Noun
   def initialize(noun, is_proper, is_plural)
     @noun, @is_proper, @is_plural = noun, is_proper, is_plural
 
-    @is_common_with_capital = (!is_proper and noun[0] =~ /[A-Z]/).nil?
+    @is_common_with_capital = !is_proper && noun[0] =~ /[A-Z]/
 
     @stem = @noun
     @stem = @stem.singularize if is_plural

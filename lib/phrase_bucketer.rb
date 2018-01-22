@@ -73,7 +73,7 @@ class PhraseBucketer
 
     return nil if noun_count < @options[:min_nouns] or noun_count > @options[:max_nouns]
     return nil if word_count < @options[:min_words] or word_count > @options[:max_words]
-    return nil if @options[:must_start_with_uppercase] and phrase.to_s =~ /^[^A-Z]/
+    return nil if @options[:must_start_with_uppercase] && phrase.to_s =~ /^[^A-Z]/
 
     return true
   end
