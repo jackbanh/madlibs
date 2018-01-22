@@ -1,23 +1,36 @@
 #!/usr/bin/ruby
+require 'optparse'
 require_relative '../lib/noun.rb'
 
 def doSub!(phrase, nouns)
   begin
     return phrase.sub!(/--(nnp?s?)--/i) do
-      noun = nouns.sample
-      '#' + Noun.inflect_from_tag(noun, $1) + '#'
+      Noun.inflect_from_tag(nouns.sample, $1)
     end
   rescue => exception
     puts exception
   end
 end
 
-# read in args
-text = "horoscopes"
-sentences = 40
+options = {
+  :sentences => 40,
+}
+
+# read in command line args
+option_parser = OptionParser.new do |opt|
+  opt.on('-t', '--text TEXT', 'Text to read from in the output folder') { |o| options[:text] = o }
+  opt.on('-s', '--sentences [NUMBER]', OptionParser::DecimalInteger, 'Number of sentences to output (default 40)') { |o| options[:sentences] = o }
+end
+option_parser.parse!
+
+if options[:text].nil?
+  puts OptionParser::MissingArgument.new('text')
+  puts option_parser
+  exit
+end
 
 # get the list of files
-files = Dir.glob("./output/#{text}_*.txt")
+files = Dir.glob("./output/#{options[:text]}_*.txt")
 
 # load phrase files
 phrase_files = files.reduce([]) do |memo, file|
@@ -31,14 +44,14 @@ phrase_files.each do |file|
 end
 
 # load nouns
-nouns = IO.readlines("./output/#{text}_removed_nouns.txt").map { |n| n.strip }
+nouns = IO.readlines("./output/#{options[:text]}_removed_nouns.txt").map { |n| n.strip }
 
 # pick phrases
-phrases = phrases.sample(sentences)
+phrases = phrases.sample(options[:sentences])
 
 # for each phrase, yank out the placeholders and inflect the nouns
 phrases.each do |phrase|
   sentence = phrase.dup
   while doSub!(sentence, nouns) do end
-  puts sentence
+  puts sentence.capitalize
 end

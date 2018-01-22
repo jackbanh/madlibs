@@ -2,7 +2,7 @@
 
 require_relative '../lib/phrase_bucketer.rb'
 
-MAX_TEXTS = 5
+MAX_TEXTS = 1000
 
 corpuses = []
 
