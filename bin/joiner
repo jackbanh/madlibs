@@ -2,9 +2,13 @@
 require_relative '../lib/noun.rb'
 
 def doSub!(phrase, nouns)
-  noun = nouns.sample
-  return phrase.sub!(/--(nnp?s?)--/i) do
-    '#' + Noun.inflect_from_tag(noun, $1) + '#'
+  begin
+    return phrase.sub!(/--(nnp?s?)--/i) do
+      noun = nouns.sample
+      '#' + Noun.inflect_from_tag(noun, $1) + '#'
+    end
+  rescue => exception
+    puts exception
   end
 end
 
@@ -35,7 +39,6 @@ phrases = phrases.sample(sentences)
 # for each phrase, yank out the placeholders and inflect the nouns
 phrases.each do |phrase|
   sentence = phrase.dup
-  while doSub!(sentence, nouns) do
-  end
-  puts "#{phrase.strip} => #{sentence}"
+  while doSub!(sentence, nouns) do end
+  puts sentence
 end
