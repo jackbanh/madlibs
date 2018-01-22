@@ -38,3 +38,4 @@ Gemfile.lock
 .rvmrc
 
 *.orig
+main.rb

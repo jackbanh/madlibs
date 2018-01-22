@@ -26,6 +26,14 @@ class Noun
     return self.new(match[:noun], !match[:proper].nil?, !match[:plural].nil?)
   end
 
+  def self.inflect_from_tag(stem, tag)
+    noun = stem.dup
+    noun = noun.pluralize if tag.include?(?s)
+    noun.capitalize! if tag =~ /^[A-Z]+$/
+
+    return noun
+  end
+
   def to_s
     return @noun
   end

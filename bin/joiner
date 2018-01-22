@@ -1,0 +1,41 @@
+#!/usr/bin/ruby
+require_relative '../lib/noun.rb'
+
+def doSub!(phrase, nouns)
+  noun = nouns.sample
+  return phrase.sub!(/--(nnp?s?)--/i) do
+    '#' + Noun.inflect_from_tag(noun, $1) + '#'
+  end
+end
+
+# read in args
+text = "horoscopes"
+sentences = 40
+
+# get the list of files
+files = Dir.glob("./output/#{text}_*.txt")
+
+# load phrase files
+phrase_files = files.reduce([]) do |memo, file|
+  memo.push(file) if file =~ /_\d+.txt$/
+  memo
+end
+
+phrases = []
+phrase_files.each do |file|
+  phrases.concat(IO.readlines(file))
+end
+
+# load nouns
+nouns = IO.readlines("./output/#{text}_removed_nouns.txt").map { |n| n.strip }
+
+# pick phrases
+phrases = phrases.sample(sentences)
+
+# for each phrase, yank out the placeholders and inflect the nouns
+phrases.each do |phrase|
+  sentence = phrase.dup
+  while doSub!(sentence, nouns) do
+  end
+  puts "#{phrase.strip} => #{sentence}"
+end
