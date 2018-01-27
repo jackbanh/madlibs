@@ -2,7 +2,7 @@ require 'active_support/inflector'
 require_relative 'configure_inflections.rb'
 
 class Noun
-  attr_reader :noun, :stem, :is_proper, :is_plural, :is_common_with_capital, :stem, :tag
+  attr_reader :noun, :stem, :tag
 
   def initialize(noun, is_proper, is_plural)
     @noun, @is_proper, @is_plural = noun, is_proper, is_plural
@@ -10,13 +10,13 @@ class Noun
     @is_common_with_capital = !is_proper && noun[0] =~ /[A-Z]/
 
     @stem = @noun
-    @stem = @stem.singularize if is_plural
-    @stem = @stem.downcase unless is_proper
+    @stem = @stem.singularize if @is_plural
+    @stem = @stem.downcase unless @is_proper
 
     @tag = 'nn'
-    @tag += 'p' if is_proper
-    @tag += 's' if is_plural
-    @tag.upcase! if is_common_with_capital
+    @tag += 'p' if @is_proper
+    @tag += 's' if @is_plural
+    @tag.upcase! if @is_common_with_capital
   end
 
   def self.new_from_tagged(tagged_noun)
@@ -32,6 +32,10 @@ class Noun
     noun.capitalize! if tag =~ /^[A-Z]+$/
 
     return noun
+  end
+
+  def is_proper?
+    return @is_proper
   end
 
   def to_s

@@ -2,6 +2,7 @@ require 'set'
 require 'engtagger'
 
 require_relative 'phrase.rb'
+require_relative 'noun_blacklist.rb'
 
 class PhraseBucketer
 
@@ -37,6 +38,8 @@ class PhraseBucketer
     @removed_nouns = SortedSet.new
     @name = name
     @tgr = EngTagger.new   
+    @noun_blacklist = NounBlacklist.new
+
     @phrase_buckets = {1 => [], 2 => []}
     @tagged_phrase_buckets = {1=> [], 2 => []}
 
@@ -93,14 +96,7 @@ class PhraseBucketer
         next
       end
 
-      phrase = Phrase.new(s, @tgr)
-      placeholder_phrase = phrase.text
-
-      # do parts-of-speech tagging
-      tagged_readable_phrase = phrase.readable
-      tagged_phrase = phrase.tagged
-      nouns = @tgr.get_nouns(tagged_phrase)
-      proper = @tgr.get_proper_nouns(tagged_phrase)
+      phrase = Phrase.new(s, @tgr, @noun_blacklist)
 
       # Pre-process and discard any invalid phrases
       next unless is_valid_phrase(phrase)
@@ -113,6 +109,9 @@ class PhraseBucketer
 
       # if phrase meets eligibility requirements
       if bucket_number
+        # remove any extra whitespace
+        placeholder_phrase.gsub!(/\s{2,}/, " ")
+
          # Add phrase to appropriate bucket
          @phrase_buckets[bucket_number].push(placeholder_phrase + (punctuations[i].gsub(";","."))) rescue nil
          placeholder_phrase
