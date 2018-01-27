@@ -83,13 +83,16 @@ class PhraseBucketer
 
   # Processes a string and updates phrase_buckets and removed_nouns
   def add_text(text)
-    return [] if text.nil?
+    return if text.nil?
     text = substitute_periods(text)
-    return [] if text.nil?
-    punctuations = text.scan(/[\.\!\?;]/)
+    return if text.nil?
+
+    # Remove newlines from text
+    text = text.gsub(/\n/, " ")
 
     # break text into phrases and process
-    text.gsub(/["”\(\)]/," ").gsub("\n"," ").split(/[\.\!\?;]/).collect.with_index do |s, i|
+    split = text.split /(?<=[\.\!\?])/
+    split.each do |s|
       s = s.gsub(FAKE_PERIOD, ".").strip
 
       if s.nil? or s.empty?
@@ -113,10 +116,7 @@ class PhraseBucketer
         placeholder_phrase.gsub!(/\s{2,}/, " ")
 
          # Add phrase to appropriate bucket
-         @phrase_buckets[bucket_number].push(placeholder_phrase + (punctuations[i].gsub(";","."))) rescue nil
-         placeholder_phrase
-      else
-        nil
+         @phrase_buckets[bucket_number].push(placeholder_phrase) rescue nil
       end
     end
   end
