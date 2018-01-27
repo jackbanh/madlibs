@@ -6,7 +6,17 @@ require_relative 'noun_blacklist.rb'
 
 class PhraseBucketer
 
-  attr_reader :phrase_buckets, :name, :tagged_phrase_buckets, :removed_nouns
+  ##
+  # Name of the PhraseBucketer, usually the directory name where texts were found
+  attr_reader :name
+
+  ##
+  # Hash of phrases. Key is number of nouns to replace, value is a set of phrases with placeholders in them.
+  attr_reader :phrase_buckets
+
+  ##
+  # SortedSet of nouns removed from the texts.
+  attr_reader :removed_nouns
 
   # A character used to stand in for a period during parsing.  Only used internally.
   FAKE_PERIOD = "\u2024"
@@ -40,15 +50,14 @@ class PhraseBucketer
     @tgr = EngTagger.new   
     @noun_blacklist = NounBlacklist.new
 
-    @phrase_buckets = {1 => [], 2 => []}
-    @tagged_phrase_buckets = {1=> [], 2 => []}
+    @phrase_buckets = {1 => Set.new, 2 => Set.new}
 
     @options = DEFAULT_OPTIONS.merge(options)
   end
 
   # Substitute periods in text for a different character so it doesn't get mistakenly split up
   # as a phrase
-  def substitute_periods(text)
+  def substitute_periods text
     begin
       modified = text.gsub(/b\.\s?(\d{4})/, "b#{FAKE_PERIOD} \\1") || text  # born
       modified.gsub!(/d\.\s?(\d{4})/, "d#{FAKE_PERIOD} \\1")   # died
@@ -81,17 +90,34 @@ class PhraseBucketer
     return true
   end
 
-  # Processes a string and updates phrase_buckets and removed_nouns
-  def add_text(text)
+  ##
+  # Processes a body of text into a list of placeholder phrases and removed nouns.
+  # Adds the phrases and removed nouns to the internal state.
+
+  def add_text text
+    phrase_buckets, removed_nouns = process_text text
+    merge_phrase_buckets_and_nouns phrase_buckets, removed_nouns
+  end
+
+  ##
+  # Processes a body of text into a list of placeholder phrases and removed nouns.
+  # Does not modify the internal state of the instance (useful for map/reduce).
+
+  def process_text text
     return if text.nil?
     text = substitute_periods(text)
     return if text.nil?
+
+    # Create variables to store results and return them
+    # Don't write directly to instance variables because that could cause issues in concurrency
+    removed_nouns = SortedSet.new
+    phrase_buckets = {}
 
     # Remove newlines from text
     text = text.gsub(/\n/, " ")
 
     # break text into phrases and process
-    split = text.split /(?<=[\.\!\?])/
+    split = text.split(/(?<=[\.\!\?])/)
     split.each do |s|
       s = s.gsub(FAKE_PERIOD, ".").strip
 
@@ -105,7 +131,7 @@ class PhraseBucketer
       next unless is_valid_phrase(phrase)
       
       # Extract all the nouns into the removed_nouns list
-      @removed_nouns.merge(phrase.nouns.map { |n, _| n.stem })
+      removed_nouns.merge(phrase.nouns.map { |n, _| n.stem })
 
       # Get the phrase with the nouns replaced
       placeholder_phrase, bucket_number = phrase.generate_placeholder_text
@@ -115,9 +141,35 @@ class PhraseBucketer
         # remove any extra whitespace
         placeholder_phrase.gsub!(/\s{2,}/, " ")
 
-         # Add phrase to appropriate bucket
-         @phrase_buckets[bucket_number].push(placeholder_phrase) rescue nil
+        # create bucket as needed
+        if !phrase_buckets.has_key? bucket_number
+          phrase_buckets[bucket_number] = Set.new
+        end
+
+        # Add phrase to appropriate bucket
+        phrase_buckets[bucket_number].add(placeholder_phrase) rescue nil
       end
     end
+
+    return phrase_buckets, removed_nouns
+  end
+
+  ##
+  # Merges a list of removed nouns and phrases to the PhraseBucketer and returns self.
+
+  def merge_phrase_buckets_and_nouns phrase_buckets, removed_nouns
+    if removed_nouns
+      @removed_nouns.merge removed_nouns
+    end
+
+    if phrase_buckets
+      phrase_buckets.each do |bucket_number, set|
+        if @phrase_buckets.has_key? bucket_number
+          @phrase_buckets[bucket_number].merge(set)
+        end
+      end
+    end
+
+    return self
   end
 end

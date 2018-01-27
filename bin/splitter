@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 
+require 'parallel'
 require_relative '../lib/phrase_bucketer.rb'
 
 MAX_TEXTS = 1000
@@ -20,10 +21,18 @@ dirs.each do |d|
 
   # Pick a random sample of files
   files = corpus.sample(MAX_TEXTS)
-  files.each do |file|
-    puts "Reading #{file}..."
-    bucketer.add_text(File.read(file))
+
+  # In parallel, read it each file and generate a list of a separate phrases and nouns
+  texts = Parallel.map(files, progress: "Reading #{name} files...") do |file|
+    bucketer.process_text(File.read file)
   end
+
+  # Merge all the separate texts into the bucketer
+  texts.reduce(bucketer) do |memo, text|
+    phrase_buckets, removed_nouns = text
+    memo.merge_phrase_buckets_and_nouns phrase_buckets, removed_nouns
+  end
+
   corpuses.push(bucketer)
 end
 
@@ -34,22 +43,14 @@ corpuses.each do |bucket|
   # phrase_buckets will have 2 buckets: 1 or 2 nouns to replace
   bucket.phrase_buckets.each do |bucket_number, phrases|
     bucket_file = "output/#{bucket.name}_#{bucket_number}.txt"
-    File.open(bucket_file, "w") do |file|
-      file.puts(phrases)
-    end
+
+    File.open(bucket_file, "w") { |file| file.puts(phrases.to_a) }
     puts "Wrote #{bucket_file}."
   end
 
   # Write removed nouns
   noun_file = "output/#{bucket.name}_removed_nouns.txt"
-  File.open(noun_file, "w") do |file|
-    file.puts(bucket.removed_nouns.to_a)
-  end
+
+  File.open(noun_file, "w") { |file| file.puts(bucket.removed_nouns.to_a) }
   puts "Wrote #{noun_file}."
-  
-  # bucket.tagged_phrase_buckets.each do |k,v|
-  #   File.open("output/tagged_#{bucket.name}_#{k}.txt", "w") do |file|
-  #     v.each {|line| file.puts line }
-  #   end 
-  # end
 end

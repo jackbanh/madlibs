@@ -1,4 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'engtagger'
 gem 'activesupport'
+gem 'engtagger'
+gem 'parallel'
+gem 'ruby-progressbar'
