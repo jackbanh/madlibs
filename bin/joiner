@@ -20,6 +20,7 @@ options = {
 option_parser = OptionParser.new do |opt|
   opt.on('-t', '--text TEXT', 'Text to read from in the output folder') { |o| options[:text] = o }
   opt.on('-s', '--sentences [NUMBER]', OptionParser::DecimalInteger, 'Number of sentences to output (default 40)') { |o| options[:sentences] = o }
+  opt.on('-f', '--noun-files [x,y,z]', 'Additional list of noun files to read in') { |o| options[:noun_files] = o }
 end
 option_parser.parse!
 
@@ -45,6 +46,10 @@ end
 
 # load nouns
 nouns = IO.readlines("./output/#{options[:text]}_removed_nouns.txt").map { |n| n.strip }
+options[:noun_files].split(",") do |file|
+  nouns.concat(IO.readlines(file))
+end
+nouns.uniq!
 
 # pick phrases
 phrases = phrases.sample(options[:sentences])
