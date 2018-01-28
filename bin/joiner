@@ -45,9 +45,11 @@ phrase_files.each do |file|
 end
 
 # load nouns
-nouns = IO.readlines("./output/#{options[:text]}_removed_nouns.txt").map { |n| n.strip }
-options[:noun_files].split(",") do |file|
-  nouns.concat(IO.readlines(file))
+nouns = IO.readlines("./output/#{options[:text]}_removed_nouns.txt")
+if options[:noun_files]
+  options[:noun_files].split(",") do |file|
+    nouns.concat(IO.readlines(file))
+  end
 end
 nouns.uniq!
 
@@ -58,5 +60,6 @@ phrases = phrases.sample(options[:sentences])
 phrases.each do |phrase|
   sentence = phrase.dup
   while doSub!(sentence, nouns) do end
-  puts sentence.capitalize
+
+  puts sentence
 end

@@ -27,7 +27,7 @@ class Noun
   end
 
   def self.inflect_from_tag(stem, tag)
-    noun = stem.dup
+    noun = stem.strip
     noun = noun.pluralize if tag.include?(?s)
     noun.capitalize! if tag =~ /^[A-Z]+$/
 
