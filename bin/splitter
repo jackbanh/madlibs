@@ -23,7 +23,10 @@ dirs.each do |d|
   files = corpus.sample(MAX_TEXTS)
 
   # In parallel, read it each file and generate a list of a separate phrases and nouns
-  texts = Parallel.map(files, progress: "Reading #{name} files...") do |file|
+  options = {
+    progress => "Reading #{name} files..."
+  }
+  texts = Parallel.map(files, options) do |file|
     bucketer.process_text(File.read file)
   end
 

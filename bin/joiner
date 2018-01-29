@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 require 'optparse'
+
 require_relative '../lib/noun.rb'
+require_relative '../lib/joiner/phrase_validator.rb'
 
 def doSub!(phrase, nouns)
   begin
@@ -53,13 +55,29 @@ if options[:noun_files]
 end
 nouns.uniq!
 
-# pick phrases
-phrases = phrases.sample(options[:sentences])
+# randomize order of phrases
+phrases.shuffle!
+
+count = 0
 
 # for each phrase, yank out the placeholders and inflect the nouns
 phrases.each do |phrase|
   sentence = phrase.dup
   while doSub!(sentence, nouns) do end
 
-  puts sentence
+  # do a post-process
+  # if nil then don't increment
+  # increment and keep going until we have enough sentences
+  sentence = PhraseValidator::validate(sentence)
+
+  if (sentence)
+    count += 1
+    puts sentence
+  end
+
+  if count == options[:sentences]
+    break
+  end
 end
+
+

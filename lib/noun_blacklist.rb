@@ -2,9 +2,14 @@ class NounBlacklist
   @@patterns = [
     /'s/,
     /is/i,
-    /^\*.*\*$/ # surrounded by asterisks
+    /^bigoted$/i,
+
+    /^\*.*\*$/, # surrounded by asterisks
   ]
 
+  ##
+  # Any noun that fails to be validated will not get replaced.
+  # Noun will remain intact in the original sentence.
   def validate(noun)
     return false if noun.is_proper?
 
